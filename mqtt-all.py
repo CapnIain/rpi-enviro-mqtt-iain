@@ -7,6 +7,7 @@ Example run: python3 mqtt-all.py --broker 192.168.1.164 --topic enviro
 import argparse
 import ST7735
 import time
+import math
 from bme280 import BME280
 from pms5003 import PMS5003, ReadTimeoutError, SerialTimeoutError
 from enviroplus import gas
@@ -33,9 +34,9 @@ except ImportError:
     from smbus import SMBus
 
 
-DEFAULT_MQTT_BROKER_IP = "localhost"
+DEFAULT_MQTT_BROKER_IP = "192.68.0.3"   # Original was "localhost"
 DEFAULT_MQTT_BROKER_PORT = 1883
-DEFAULT_MQTT_TOPIC = "enviroplus"
+DEFAULT_MQTT_TOPIC = "envirocrawl"   # Original was "enviroplus"
 DEFAULT_READ_INTERVAL = 5
 
 # mqtt callbacks
@@ -63,10 +64,26 @@ def read_bme280(bme280):
         int(bme280.get_pressure() * 100), -1
     )  # round to nearest 10
     values["humidity"] = int(bme280.get_humidity())
+    #
+    # These baseline resistances will have to determined for each sensor in clean air (these are Ohms - not kOhms)
+    # The conversion formulea came from https://community.openhab.org/t/diy-weather-station-w-enviro-mics6814-converting-ohms-to-ppm/85923/17
+    #
+    red_r0 = 200000
+    ox_r0 = 20000
+    nh3_r0 = 750000
+    # Get the gas readings and generate raw (kOhm) and estimated ppm
     data = gas.read_all()
+    # AQI based on airnow.gov
+    #   Very Unhealthy/Hazardous -> "POOR"(5), Unhealthy/Unhealthy for sensitive groups -> "INFERIOR"(4)
+    #   Moderate -> "FAIR"(3), Good (lower half) -> "GOOD"(2), Good (top half) -> EXCELLENT(1)
+    # We are assuming oxidized = NO2 for reporting purposes.
     values["oxidised"] = int(data.oxidising / 1000)
+    values["oxidisedppm"] = oxppm = round(math.pow(10, math.log10(data.oxidising/ox_r0) - 0.8129),3)
+    oxaqi = oxppm > 0.65 ? 5 : oxppm > 0.1 ? 4 : oxppm > 0.05 ? 3 : oxppm > 0.025 ? 2 :1 
     values["reduced"] = int(data.reducing / 1000)
+    values["reducedppm"] = round(math.pow(10, -1.25 * math.log10(data.reducing/red_r0) + 0.64),3)
     values["nh3"] = int(data.nh3 / 1000)
+    values["nh3ppm"] =  round(math.pow(10, -1.8 * math.log10(data.nh3/nh3_r0) - 0.163),3)
     values["lux"] = int(ltr559.get_lux())
     return values
 
