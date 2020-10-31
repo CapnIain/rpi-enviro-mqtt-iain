@@ -78,12 +78,41 @@ def read_bme280(bme280):
     #   Moderate -> "FAIR"(3), Good (lower half) -> "GOOD"(2), Good (top half) -> EXCELLENT(1)
     # We are assuming oxidized = NO2 for reporting purposes.
     values["oxidised"] = int(data.oxidising / 1000)
-    values["oxidisedppm"] = oxppm = round(math.pow(10, math.log10(data.oxidising/ox_r0) - 0.8129),3)
-    oxaqi = oxppm > 0.65 ? 5 : oxppm > 0.1 ? 4 : oxppm > 0.05 ? 3 : oxppm > 0.025 ? 2 :1 
+    values["oxidisedppm"] = oxppm = round(math.pow(10, math.log10(data.oxidising/ox_r0) - 0.8129),2)
+    values["oxidisedden"] = int(1200*oxppm)     # Density in ug/m3 based on NO2 conversion
+    if oxppm > 0.65:
+        oxaqi = 5
+    elif oxppm > 0.1:
+        oxaqi = 4
+    elif oxppm > 0.05:
+        oxaqi = 3
+    elif oxppm > 0.025:
+        oxaqi = 2
+    else:
+        oxaqi = 1
+    # We are assuming reduced = CO for reporting purposes
     values["reduced"] = int(data.reducing / 1000)
-    values["reducedppm"] = round(math.pow(10, -1.25 * math.log10(data.reducing/red_r0) + 0.64),3)
+    values["reducedppm"] = rdppm = round(math.pow(10, -1.25 * math.log10(data.reducing/red_r0) + 0.64),2)
+    if rdppm > 15.5:
+        rdaqi = 5
+    elif rdppm > 9.5:
+        rdaqi = 4
+    elif rdppm > 4.5:
+        rdaqi = 3
+    elif rdppm > 2.2:
+        rdaqi = 2
+    else:
+        rdaqi = 1 
+    # nh3 = voc for homebridge reporting (we re using Ammonia for desnity calculation)
     values["nh3"] = int(data.nh3 / 1000)
-    values["nh3ppm"] =  round(math.pow(10, -1.8 * math.log10(data.nh3/nh3_r0) - 0.163),3)
+    values["nh3ppm"] = nhppm = round(math.pow(10, -1.8 * math.log10(data.nh3/nh3_r0) - 0.163),2)
+    values["nh3den"] = int(700*nhppm)
+    if rdppm > 100:     # Just a guess
+        nhaqi = 5
+    else:
+        nhaqi = 1
+    # Use the worst case air quality
+    values["aqi"] = max(oxaqi, rdaqi,nhaqi)
     values["lux"] = int(ltr559.get_lux())
     return values
 
