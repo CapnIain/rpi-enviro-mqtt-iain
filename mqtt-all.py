@@ -71,7 +71,9 @@ def read_bme280(bme280):
     red_r0 = 200000
     ox_r0 = 20000
     nh3_r0 = 750000
+    water_v = 3.0   # If the voltage is below this, then consider it a flood
     # Get the gas readings and generate raw (kOhm) and estimated ppm
+    gas.enable_adc()
     data = gas.read_all()
     # AQI based on airnow.gov
     #   Very Unhealthy/Hazardous -> "POOR"(5), Unhealthy/Unhealthy for sensitive groups -> "INFERIOR"(4)
@@ -114,6 +116,9 @@ def read_bme280(bme280):
     # Use the worst case air quality
     values["aqi"] = max(oxaqi, rdaqi,nhaqi)
     values["lux"] = int(ltr559.get_lux())
+    # Now the ADC/water-detector
+    values["adc"]  = data.adc
+    values["leakDetected"] = False if data.adc > 3.0 else True
     return values
 
 
