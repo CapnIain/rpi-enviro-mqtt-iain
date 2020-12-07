@@ -1,0 +1,11 @@
+[Unit]
+Description=enviro mqtt
+After=multi-user.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi
+ExecStart=/usr/bin/python3 /home/pi/mqtt-all.py
+
+[Install]
+WantedBy=multi-user.target
