@@ -38,6 +38,7 @@ DEFAULT_MQTT_BROKER_IP = "192.68.0.3"   # Original was "localhost"
 DEFAULT_MQTT_BROKER_PORT = 1883
 DEFAULT_MQTT_TOPIC = "envirocrawl"   # Original was "enviroplus"
 DEFAULT_READ_INTERVAL = 5
+DEFAULT_ENVIRO_PLUS = 1     # 1 = enviro+, 0 = basic enviro (no gas monitor)
 
 # mqtt callbacks
 def on_connect(client, userdata, flags, rc):
@@ -64,6 +65,11 @@ def read_bme280(bme280):
         int(bme280.get_pressure() * 100), -1
     )  # round to nearest 10
     values["humidity"] = int(bme280.get_humidity())
+    #
+    # If we have a basic enviro then bale now since we won't have the gas detector
+    #
+    if args.enviro = 0:
+        return values
     #
     # These baseline resistances will have to determined for each sensor in clean air (these are Ohms - not kOhms)
     # The conversion formulea came from https://community.openhab.org/t/diy-weather-station-w-enviro-mics6814-converting-ohms-to-ppm/85923/17
@@ -214,6 +220,12 @@ def main():
         default=DEFAULT_READ_INTERVAL,
         type=int,
         help="the read interval in seconds",
+    )
+    parser.add_argument(
+        "--plus",
+        default=DEFAULT_ENVIRO_PLUS,
+        type=int,
+        help="Whether enviro+ 0 = no, 1 = yes",
     )
     args = parser.parse_args()
 
